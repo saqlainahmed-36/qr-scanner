@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Scanner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Alata&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Alata', sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 25%, #ffd200 50%, #4facfe 75%, #00f2fe 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.3), 
+                        0 0 0 1px rgba(255,255,255,0.5) inset;
+            border: 3px solid transparent;
+            background-clip: padding-box;
+        }
+
+        h1 {
+            text-align: center;
+            background: linear-gradient(135deg, #f5576c, #4facfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 25px;
+            font-size: 32px;
+            font-weight: 400;
+            letter-spacing: 1px;
+        }
+
+        #reader {
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 25px;
+            border: 3px solid;
+            border-image: linear-gradient(135deg, #f5576c, #ffd200, #4facfe) 1;
+        }
+
+        #result {
+            background: linear-gradient(135deg, rgba(245,87,108,0.1), rgba(79,172,254,0.1));
+            border-radius: 20px;
+            padding: 25px;
+            min-height: 80px;
+            display: none;
+            animation: slideIn 0.3s ease;
+            border: 2px solid rgba(245,87,108,0.3);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-label {
+            font-weight: 600;
+            background: linear-gradient(135deg, #f5576c, #4facfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .result-text {
+            color: #222;
+            word-break: break-all;
+            font-size: 17px;
+            line-height: 1.6;
+        }
+
+        .result-text a {
+            background: linear-gradient(135deg, #f5576c, #4facfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .result-text a:hover {
+            text-decoration: underline;
+        }
+
+        button {
+            background: linear-gradient(135deg, #f5576c 0%, #4facfe 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 17px;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(245,87,108,0.4);
+            font-family: 'Alata', sans-serif;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(245,87,108,0.6);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .status {
+            text-align: center;
+            color: #555;
+            font-size: 15px;
+            margin-top: 20px;
+        }
+
+        .success {
+            background: linear-gradient(135deg, #10b981, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 600;
+        }
+
+        .error {
+            background: linear-gradient(135deg, #ef4444, #f87171);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 QR Scanner</h1>
+        <div id="reader"></div>
+        <div id="result">
+            <div class="result-label">Scanned Result:</div>
+            <div class="result-text" id="resultText"></div>
+        </div>
+        <button id="copyBtn" style="display: none;">Copy to Clipboard</button>
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        // Check if device is Android
+        function isAndroid() {
+            return /Android/i.test(navigator.userAgent);
+        }
+
+        // If not Android, show message and stop
+        if (!isAndroid()) {
+            document.addEventListener('DOMContentLoaded', function() {
+                document.body.innerHTML = `
+                    <div class="container" style="text-align: center;">
+                        <h1>🤖 Android Only</h1>
+                        <div style="padding: 40px 20px;">
+                            <p style="font-size: 20px; color: #555; line-height: 1.8;">
+                                Sorry! This QR scanner is designed exclusively for Android devices.
+                            </p>
+                            <p style="font-size: 16px; color: #888; margin-top: 20px;">
+                                Please access this page from an Android phone or tablet.
+                            </p>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            // Android device - run the scanner
+            document.addEventListener('DOMContentLoaded', function() {
+                let html5QrCode;
+                let lastResult = '';
+
+                function onScanSuccess(decodedText, decodedResult) {
+                    lastResult = decodedText;
+                    
+                    const resultDiv = document.getElementById('result');
+                    const resultText = document.getElementById('resultText');
+                    const copyBtn = document.getElementById('copyBtn');
+                    const status = document.getElementById('status');
+                    
+                    resultDiv.style.display = 'block';
+                    copyBtn.style.display = 'block';
+                    
+                    // Check if it's a URL
+                    const urlPattern = /^(https?:\/\/)/i;
+                    if (urlPattern.test(decodedText)) {
+                        resultText.innerHTML = `<a href="${decodedText}" target="_blank">${decodedText}</a>`;
+                    } else {
+                        resultText.textContent = decodedText;
+                    }
+                    
+                    status.textContent = '✓ Scan successful!';
+                    status.className = 'status success';
+                }
+
+                function onScanError(errorMessage) {
+                    // Ignore scanning errors (they happen constantly while scanning)
+                }
+
+                // Start scanner
+                html5QrCode = new Html5Qrcode("reader");
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+                Html5Qrcode.getCameras().then(devices => {
+                    if (devices && devices.length) {
+                        const status = document.getElementById('status');
+                        status.textContent = 'Point camera at QR code';
+                        status.className = 'status';
+                        
+                        html5QrCode.start(
+                            { facingMode: "environment" },
+                            config,
+                            onScanSuccess,
+                            onScanError
+                        ).catch(err => {
+                            status.textContent = 'Error: Could not start camera';
+                            status.className = 'status error';
+                            console.error(err);
+                        });
+                    }
+                }).catch(err => {
+                    const status = document.getElementById('status');
+                    status.textContent = 'No camera found';
+                    status.className = 'status error';
+                    console.error(err);
+                });
+
+                // Copy button functionality
+                document.getElementById('copyBtn').addEventListener('click', async () => {
+                    try {
+                        await navigator.clipboard.writeText(lastResult);
+                        const status = document.getElementById('status');
+                        status.textContent = '✓ Copied to clipboard!';
+                        status.className = 'status success';
+                        setTimeout(() => {
+                            status.textContent = 'Point camera at QR code';
+                            status.className = 'status';
+                        }, 2000);
+                    } catch (err) {
+                        console.error('Failed to copy:', err);
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>
